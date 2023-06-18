@@ -1,0 +1,96 @@
+﻿@page "/Login"
+@using IndrivoHomework.Models;
+@inject IJSRuntime js
+@inject DbHelper dbHelper
+@inject AuthenticationStateProvider auth
+@inject NavigationManager nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Login</PageTitle>
+
+<div class="d-flex flex-column justify-center align-center">
+
+    <MudText Class="mb-2" Typo="Typo.h4">Sign In</MudText>
+
+    <MudForm Model="model" @ref="form" Validation="@(userValidator.ValidateValue)" ValidationDelay="0" @bind-IsValid="isValid" Class="d-flex justify-center" Style="width: 100%">
+        <MudCard Outlined="true" Style="flex-grow: 1; max-width: 400px">
+            <MudCardContent>
+                <MudTextField @bind-Value="model.Username"
+                              For="@(() => model.Username)"
+                              Immediate="true"
+                              Label="Username" />
+                <MudTextField @bind-Value="model.Password"
+                              For="@(() => model.Password)"
+                              Immediate="true"
+                              Label="Password"
+                              InputType="InputType.Password"/>
+                <MudLink Typo="Typo.caption" Href="/reset-password">Forgot password?</MudLink>
+                @if (isError)
+                {
+                    <MudAlert Class="mt-3" Severity="Severity.Error" ShowCloseIcon="true" CloseIconClicked="(() => isError = false)">Username or password is incorect</MudAlert>
+                }
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton OnClick="Authenticate" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(isValid == false)" FullWidth="true">Login</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudForm>
+
+    <MudCard Class="mt-3">
+        <MudCardContent>
+            <MudText Typo="Typo.button"> Are you new? <MudLink Href="/signup">Create an account</MudLink>.</MudText>
+        </MudCardContent>
+    </MudCard>
+</div>
+
+@code
+{
+    MudForm form = new();
+    private UserModel model = new();
+    private UserModelFluentValidator userValidator = new UserModelFluentValidator();
+    private bool isValid;
+    private bool isError;
+
+    private async Task Authenticate()
+    {
+        try
+        {
+            isError = false;
+
+            if (new[] { model.Username, model.Password }.Any(x => string.IsNullOrEmpty(x)))
+            {
+                isValid = false;
+                return;
+            }
+
+            var user = dbHelper.GetUser(model.Username, model.Password);
+
+            if (user != null)
+            {
+                var customAuth = (CustomAuthStateProvider)auth;
+
+                var roles = dbHelper.GetUserRoles(user.Id);
+
+                UserSession userSession = new()
+                    {
+                        Username = user.Username,
+                        Roles = roles.ToList()
+                    };
+
+                await customAuth.UpdateAuthenticationState(userSession);
+
+                nav.NavigateTo("/", true);
+            }
+            else
+            {
+                isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+
+        StateHasChanged();
+    }
+}

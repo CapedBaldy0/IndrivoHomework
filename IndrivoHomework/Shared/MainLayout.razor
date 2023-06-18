@@ -1,6 +1,8 @@
 ﻿@inherits LayoutComponentBase
 
-<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" />
+@inject ICookie cookieHelper
+
+<MudThemeProvider @ref="@_mudThemeProvider" IsDarkMode="@_isDarkMode" IsDarkModeChanged="((bool value) => ThemeChanged(value))" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
@@ -11,6 +13,15 @@
         <MudToggleIconButton @bind-Toggled="@_isDarkMode"
                              Icon="@Icons.Material.Filled.WbSunny" Title="Switch to Dark Theme"
                              ToggledIcon="@Icons.Material.Filled.DarkMode" ToggledTitle="Switch to Light Theme" />
+        <AuthorizeView>
+            <Authorized>
+
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Class="mx-3" Variant="Variant.Text" Href="/login">Sign In</MudButton>
+                <MudButton Variant="Variant.Outlined" Href="/signup">Sign Up</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
         <MudDrawerHeader>
@@ -25,7 +36,8 @@
     </MudMainContent>
 </MudLayout>
 
-@code {
+@code
+{
     bool _drawerOpen = true;
 
     private bool _isDarkMode;
@@ -35,9 +47,26 @@
     {
         if (firstRender)
         {
-            _isDarkMode = _mudThemeProvider != null ? await _mudThemeProvider.GetSystemPreference() : false;
+            var theme = await cookieHelper.GetValue("theme");
+
+            if (string.IsNullOrEmpty(theme))
+            {
+                _isDarkMode = _mudThemeProvider != null ? await _mudThemeProvider.GetSystemPreference() : false;
+            }
+            else
+            {
+                _isDarkMode = theme == "dark" ? true : false;
+            }
+
             StateHasChanged();
         }
+    }
+
+    private async Task ThemeChanged(bool isDarkMode)
+    {
+        _isDarkMode = isDarkMode;
+
+        await cookieHelper.SetValue("theme", isDarkMode ? "dark" : "light");
     }
 
     void DrawerToggle()

@@ -1,6 +1,7 @@
+using IndrivoHomework.Authentication;
 using IndrivoHomework.Data;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using MudBlazor.Services;
 
@@ -9,9 +10,13 @@ var builder = WebApplication.CreateBuilder(args);
 StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
 
 // Add services to the container.
+builder.Services.AddAuthenticationCore();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddScoped<ProtectedSessionStorage>();
+builder.Services.AddSingleton<DbHelper>();
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+builder.Services.AddScoped<ICookie, CookieHelper>();
 builder.Services.AddMudServices();
 
 var app = builder.Build();

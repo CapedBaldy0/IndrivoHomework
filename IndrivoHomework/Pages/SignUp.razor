@@ -1,0 +1,100 @@
+﻿@page "/Signup"
+
+@using IndrivoHomework.Models;
+@inject IJSRuntime js
+@inject DbHelper dbHelper
+@inject AuthenticationStateProvider auth
+@inject NavigationManager nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Sign up</PageTitle>
+
+<div class="d-flex flex-column justify-center align-center">
+
+    <MudText Class="mb-2" Typo="Typo.h4">Create new Account</MudText>
+
+    <MudForm Model="model" @ref="form" Validation="@(userValidator.ValidateValue)" ValidationDelay="0" IsValidChanged="(() => isValid = form.IsValid)" Class="d-flex justify-center" Style="width: 100%">
+        <MudCard Outlined="true" Style="flex-grow: 1; max-width: 400px">
+            <MudCardContent>
+                <MudTextField @bind-Value="model.Username"
+                              For="@(() => model.Username)"
+                              Immediate="true"
+                              Label="Username" />
+                <MudTextField @bind-Value="model.Email"
+                              For="@(() => model.Email)"
+                              Immediate="true"
+                              Label="Email"
+                              InputType="InputType.Email" />
+                <MudTextField @bind-Value="model.Password"
+                              For="@(() => model.Password)"
+                              Immediate="true"
+                              Label="Password"
+                              InputType="InputType.Password" />
+                @if (string.IsNullOrEmpty(error) == false)
+                {
+                    <MudAlert Class="mt-3" Severity="Severity.Error" ShowCloseIcon="true" CloseIconClicked="(() => error = null)">@error</MudAlert>
+                }
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton OnClick="CreateAccount" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(isValid == false)" FullWidth="true">Sign Up</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudForm>
+
+    <MudCard Class="mt-3">
+        <MudCardContent>
+            <MudText Typo="Typo.button"> Already have an account? <MudLink Href="/login">Sign in →</MudLink></MudText>
+        </MudCardContent>
+    </MudCard>
+</div>
+
+@code
+{
+    MudForm form = new();
+    private UserModel model = new();
+    private UserModelFluentValidator userValidator = new UserModelFluentValidator();
+    private bool isValid;
+    private string? error;
+
+    private void CreateAccount()
+    {
+        try
+        {
+            error = null;
+
+            if (new[] {model.Email, model.Username, model.Password}.Any(x => string.IsNullOrEmpty(x)))
+            {
+                isValid = false;
+                return;
+            }
+
+            var usedUsernames = dbHelper.GetUsedUsernames();
+
+            if (usedUsernames.Contains(model.Username))
+            {
+                error = $"Username: {model.Username} is already in use";
+                return;
+            }
+
+            var usedEmails = dbHelper.GetUsedEmails();
+
+            if (usedEmails.Contains(model.Username))
+            {
+                error = $"Email: {model.Email} is already in use";
+                return;
+            }
+
+            dbHelper.AddUser(model);
+
+            nav.NavigateTo("/login");
+
+            Snackbar.Add("User created successfully\nYou can now sign in", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+
+        StateHasChanged();
+    }
+}
