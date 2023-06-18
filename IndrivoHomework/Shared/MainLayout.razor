@@ -1,6 +1,10 @@
 ﻿@inherits LayoutComponentBase
 
 @inject ICookie cookieHelper
+@inject AuthenticationStateProvider auth
+@inject DbHelper dbHelper
+@inject ISnackbar Snackbar
+@inject NavigationManager nav
 
 <MudThemeProvider @ref="@_mudThemeProvider" IsDarkMode="@_isDarkMode" IsDarkModeChanged="((bool value) => ThemeChanged(value))" />
 <MudDialogProvider />
@@ -15,39 +19,96 @@
                              ToggledIcon="@Icons.Material.Filled.DarkMode" ToggledTitle="Switch to Light Theme" />
         <AuthorizeView>
             <Authorized>
+                <MudButton Class="ml-3" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Person" Color="Color.Primary" OnClick="(() => viewUserInfo = !viewUserInfo)">@(context?.User?.Identity?.Name ?? "Error")</MudButton>
+                    <MudPopover Open="viewUserInfo" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopLeft">
+                        <div class="d-flex flex-column">
+                            <MudButton StartIcon="@Icons.Material.Rounded.Settings" OnClick="(() => viewUserSettings = true)">Settings</MudButton>
+                            <MudButton StartIcon="@Icons.Material.Rounded.Logout" OnClick="Logout">Log out</MudButton>
+                        </div>
+                    </MudPopover>
+                </Authorized>
+                <NotAuthorized>
+                    <MudButton Class="mx-3" Variant="Variant.Text" Href="/login">Sign In</MudButton>
+                    <MudButton Variant="Variant.Outlined" Href="/signup">Sign Up</MudButton>
+                </NotAuthorized>
+            </AuthorizeView>
+        </MudAppBar>
+        <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
+            <MudDrawerHeader>
+                <MudText Typo="Typo.h6">Indrivo Homework</MudText>
+            </MudDrawerHeader>
+            <NavMenu />
+        </MudDrawer>
+        <MudMainContent>
+            <MudContainer MaxWidth="MaxWidth.Large" Class="my-16 pt-16">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
 
-            </Authorized>
-            <NotAuthorized>
-                <MudButton Class="mx-3" Variant="Variant.Text" Href="/login">Sign In</MudButton>
-                <MudButton Variant="Variant.Outlined" Href="/signup">Sign Up</MudButton>
-            </NotAuthorized>
-        </AuthorizeView>
-    </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
-        <MudDrawerHeader>
-            <MudText Typo="Typo.h6">Indrivo Homework</MudText>
-        </MudDrawerHeader>
-        <NavMenu />
-    </MudDrawer>
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="my-16 pt-16">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+    <MudDialog @bind-IsVisible="viewUserSettings" Options="dialogOptions">
+        <TitleContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-3" /> User Settings
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudForm Model="user" Validation="@(userValidator.ValidateValue)" ValidationDelay="0" @bind-IsValid="isValid" Class="d-flex justify-center" Style="width: 100%">
+                <MudCard Style="flex-grow: 1;">
+                    <MudCardContent>
+                        <MudTextField @bind-Value="user.Username"
+                                      For="@(() => user.Username)"
+                                      Immediate="true"
+                                      Label="Username" />
+                        <MudTextField @bind-Value="user.Email"
+                                      For="@(() => user.Email)"
+                                      Immediate="true"
+                                      Label="Email"
+                                      InputType="InputType.Email" />
+                        <MudTextField @bind-Value="user.Password"
+                                      For="@(() => user.Password)"
+                                      Immediate="true"
+                                      Label="Password"
+                                      InputType="InputType.Password" />
+                        @if (string.IsNullOrEmpty(error) == false)
+                    {
+                        <MudAlert Class="mt-3" Severity="Severity.Error" ShowCloseIcon="true" CloseIconClicked="(() => error = null)">@error</MudAlert>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton OnClick="SaveSettings" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(isValid == false)" FullWidth="true">Save Settings</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" Class="ml-3" OnClick="(() => viewUserSettings = false)">Close</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudForm>
+        </DialogContent>
+    </MudDialog>
 
-@code
+    @code
 {
     bool _drawerOpen = true;
+    private bool viewUserInfo;
+    private bool viewUserSettings;
 
     private bool _isDarkMode;
     private MudThemeProvider? _mudThemeProvider;
+    private UserModel user = new();
+    private UserModelFluentValidator userValidator = new();
+    private bool isValid;
+    private string? error;
+    private DialogOptions dialogOptions = new() { FullWidth = true };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             var theme = await cookieHelper.GetValue("theme");
+
+            var customAuth = (CustomAuthStateProvider)auth;
+
+            var userSession = await customAuth.GetAuthenticationStateAsync();
+
+            user = dbHelper.GetUser(userSession?.User?.Identity?.Name) ?? new();
 
             if (string.IsNullOrEmpty(theme))
             {
@@ -69,8 +130,52 @@
         await cookieHelper.SetValue("theme", isDarkMode ? "dark" : "light");
     }
 
-    void DrawerToggle()
+    private void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task Logout()
+    {
+        var customAuth = (CustomAuthStateProvider)auth;
+
+        await customAuth.UpdateAuthenticationState(null);
+    }
+
+    private async Task SaveSettings()
+    {
+        try
+        {
+            error = null;
+
+            if (new[] { user.Email, user.Username, user.Password }.Any(x => string.IsNullOrEmpty(x)))
+            {
+                isValid = false;
+                return;
+            }
+
+            dbHelper.SaveUser(user);
+
+            var customAuth = (CustomAuthStateProvider)auth;
+
+            var roles = dbHelper.GetUserRoles(user.Id);
+
+            UserSession userSession = new()
+                {
+                    Username = user.Username,
+                    Roles = roles.ToList()
+                };
+
+            await customAuth.UpdateAuthenticationState(userSession);
+
+            nav.NavigateTo("/", true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+
+        StateHasChanged();
     }
 }

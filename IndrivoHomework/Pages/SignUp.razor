@@ -13,7 +13,7 @@
 
     <MudText Class="mb-2" Typo="Typo.h4">Create new Account</MudText>
 
-    <MudForm Model="model" @ref="form" Validation="@(userValidator.ValidateValue)" ValidationDelay="0" IsValidChanged="(() => isValid = form.IsValid)" Class="d-flex justify-center" Style="width: 100%">
+    <MudForm Model="model" @ref="form" Validation="@(userValidator.ValidateValue)" ValidationDelay="0" @bind-IsValid="isValid" Class="d-flex justify-center" Style="width: 100%">
         <MudCard Outlined="true" Style="flex-grow: 1; max-width: 400px">
             <MudCardContent>
                 <MudTextField @bind-Value="model.Username"
@@ -62,7 +62,7 @@
         {
             error = null;
 
-            if (new[] {model.Email, model.Username, model.Password}.Any(x => string.IsNullOrEmpty(x)))
+            if (new[] { model.Email, model.Username, model.Password }.Any(x => string.IsNullOrEmpty(x)))
             {
                 isValid = false;
                 return;
@@ -85,6 +85,10 @@
             }
 
             dbHelper.AddUser(model);
+
+            var user = dbHelper.GetUser(model.Username);
+
+            if (user != null) dbHelper.SetBasicRoleToUser(user.Id);
 
             nav.NavigateTo("/login");
 

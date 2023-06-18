@@ -79,6 +79,8 @@
 
                 await customAuth.UpdateAuthenticationState(userSession);
 
+                dbHelper.LoginHistory(user.Id);
+
                 nav.NavigateTo("/", true);
             }
             else

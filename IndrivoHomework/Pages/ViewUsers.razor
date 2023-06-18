@@ -1,0 +1,54 @@
+﻿@page "/Users"
+
+@using IndrivoHomework.Models;
+
+@attribute [Authorize(Roles = "Admin")]
+
+@inject DbHelper dbHelper
+@inject NavigationManager nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Login History</PageTitle>
+
+<MudTable Items="@users" Hover="true" Breakpoint="Breakpoint.Sm" LoadingProgressColor="Color.Info">
+    <HeaderContent>
+        <MudTh>@nameof(UserModel.Id)</MudTh>
+        <MudTh>@nameof(UserModel.Username)</MudTh>
+        <MudTh>@nameof(UserModel.Email)</MudTh>
+        <MudTh>@nameof(UserModel.Password)</MudTh>
+        <MudTh>Roles</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="@nameof(UserModel.Id)">@context.Id</MudTd>
+        <MudTd DataLabel="@nameof(UserModel.Username)">@context.Username</MudTd>
+        <MudTd DataLabel="@nameof(UserModel.Email)">@context.Email</MudTd>
+        <MudTd DataLabel="@nameof(UserModel.Password)">@context.Password</MudTd>
+        <MudTd DataLabel="Roles">@string.Join(", ", userRoles.Where(x => x.UserId == context.Id).Select(x => x.Role))</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code
+{
+    private List<UserModel> users = new();
+
+    private List<UserRoleModel> userRoles = new();
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                users = dbHelper.GetAllUsers().ToList();
+
+                userRoles = dbHelper.GetAllUserRoles().ToList();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+            }
+
+            StateHasChanged();
+        }
+    }
+}

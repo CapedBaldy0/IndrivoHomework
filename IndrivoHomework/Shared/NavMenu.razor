@@ -1,3 +1,9 @@
 ﻿<MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    <AuthorizeView Roles="Admin">
+        <Authorized>
+            <MudNavLink Href="/Users" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">View all Users</MudNavLink>
+            <MudNavLink Href="/LoginHistory" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Login History</MudNavLink>
+        </Authorized>
+    </AuthorizeView>
 </MudNavMenu>

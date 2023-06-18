@@ -1,0 +1,46 @@
+﻿@page "/LoginHistory"
+
+@using IndrivoHomework.Models;
+
+@attribute [Authorize(Roles = "Admin")]
+
+@inject DbHelper dbHelper
+@inject NavigationManager nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Login History</PageTitle>
+
+<MudTable Items="@loginHistories" Hover="true" Breakpoint="Breakpoint.Sm" LoadingProgressColor="Color.Info">
+    <HeaderContent>
+        <MudTh>@nameof(LoginHistoryModel.Username)</MudTh>
+        <MudTh>@nameof(LoginHistoryModel.Email)</MudTh>
+        <MudTh>@nameof(LoginHistoryModel.Time)</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="@nameof(LoginHistoryModel.Username)">@context.Username</MudTd>
+        <MudTd DataLabel="@nameof(LoginHistoryModel.Email)">@context.Email</MudTd>
+        <MudTd DataLabel="@nameof(LoginHistoryModel.Time)">@context.Time</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code
+{
+    private List<LoginHistoryModel> loginHistories = new();
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                loginHistories = dbHelper.GetLoginHistory().ToList();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+            }
+
+            StateHasChanged();
+        }
+    }
+}

@@ -48,7 +48,7 @@ namespace IndrivoHomework.Authentication
             }
         }
 
-        public async Task UpdateAuthenticationState(UserSession user)
+        public async Task UpdateAuthenticationState(UserSession? user)
         {
             ClaimsPrincipal claimsPrincipal;
 
